@@ -362,6 +362,7 @@ class MethodSummary(Summary):
     name: str
     item: tf.Method
     parent: Optional[str]
+    access_specifier: Optional[str]
     return_type: Optional[str]
     source_code: str
     implementation: Optional[tf.StatementList] = None
@@ -369,6 +370,13 @@ class MethodSummary(Summary):
 
     def __getitem__(self, key: str) -> DeclarationSummary:
         return self.declarations[key]
+
+    @property
+    def qualified_name(self) -> str:
+        """Qualified name including parent. For example, ``fbName.DeclName()``."""
+        if self.parent:
+            return f"{self.parent}.{self.name}"
+        return self.name
 
     @property
     def declarations_by_block(self) -> Dict[str, Dict[str, DeclarationSummary]]:
@@ -382,7 +390,7 @@ class MethodSummary(Summary):
         cls,
         method: tf.Method,
         parent: Optional[
-            Union[tf.Method, tf.Program]
+            Union[tf.Method, tf.Program, tf.Interface]
         ] = None,
         source_code: Optional[str] = None,
         filename: Optional[pathlib.Path] = None,
@@ -395,10 +403,12 @@ class MethodSummary(Summary):
             item=method,
             parent=parent.name if parent is not None else "",
             return_type=str(method.return_type) if method.return_type else None,
+            access_specifier=str(method.access) if method.access else None,
             source_code=source_code,
             filename=filename,
             **Summary.get_meta_kwargs(method.meta),
         )
+        
         for decl in method.declarations:
             summary.declarations.update(
                 DeclarationSummary.from_block(decl, parent=method, filename=filename)
@@ -411,6 +421,8 @@ class MethodSummary(Summary):
 class PropertyGetSetSummary(Summary):
     name: str
     item: tf.Property
+    parent: Optional[str]
+    access_specifier: Optional[str]
     source_code: str
     declarations: Dict[str, DeclarationSummary] = field(default_factory=dict)
     implementation: Optional[tf.StatementList] = None
@@ -426,6 +438,8 @@ class PropertySummary(Summary):
     getter: PropertyGetSetSummary
     setter: PropertyGetSetSummary
     source_code: str
+    parent: Optional[str]
+    access_specifier: Optional[str]
     # implementation: Optional[tf.StatementList] = None
 
     def __getitem__(self, key: str):
@@ -435,10 +449,19 @@ class PropertySummary(Summary):
             return self.setter
         raise KeyError(f"{key}: Properties do not contain declarations")
 
+    @property
+    def qualified_name(self) -> str:
+        """Qualified name including parent. For example, ``fbName.DeclName``."""
+        if self.parent:
+            return f"{self.parent}.{self.name}"
+        return self.name
+
     @classmethod
     def from_property(
         cls,
         property: tf.Property,
+        parent: Optional[Union[tf.FunctionBlock, tf.Interface]
+                         ] = None,
         source_code: Optional[str] = None,
         filename: Optional[pathlib.Path] = None,
     ) -> PropertySummary:
@@ -453,6 +476,8 @@ class PropertySummary(Summary):
                 item=property,
                 source_code=source_code,
                 filename=filename,
+                parent=parent.name if parent is not None else "",
+                access_specifier=str(property.access) if property.access else None,
                 **Summary.get_meta_kwargs(property.meta),
             ),
             setter=PropertyGetSetSummary(
@@ -460,10 +485,14 @@ class PropertySummary(Summary):
                 item=property,
                 source_code=source_code,
                 filename=filename,
+                parent=parent.name if parent is not None else "",
+                access_specifier=str(property.access) if property.access else None,
                 **Summary.get_meta_kwargs(property.meta),
             ),
             source_code=source_code,
             filename=filename,
+            parent=parent.name if parent is not None else "",
+            access_specifier=str(property.access) if property.access else None,
             **Summary.get_meta_kwargs(property.meta),
         )
 
@@ -1252,6 +1281,7 @@ class CodeSummary:
                     pou = get_pou_context()
                     summary = MethodSummary.from_method(
                         item,
+                        parent=pou,
                         source_code=get_code_by_meta(parsed, item.meta),
                         filename=parsed.filename,
                     )
