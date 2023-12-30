@@ -361,6 +361,7 @@ class MethodSummary(Summary):
     """Summary representation of a single method."""
     name: str
     item: tf.Method
+    parent: Optional[str]
     return_type: Optional[str]
     source_code: str
     implementation: Optional[tf.StatementList] = None
@@ -380,6 +381,9 @@ class MethodSummary(Summary):
     def from_method(
         cls,
         method: tf.Method,
+        parent: Optional[
+            Union[tf.Method, tf.Program]
+        ] = None,
         source_code: Optional[str] = None,
         filename: Optional[pathlib.Path] = None,
     ) -> MethodSummary:
@@ -389,6 +393,7 @@ class MethodSummary(Summary):
         summary = MethodSummary(
             name=method.name,
             item=method,
+            parent=parent.name if parent is not None else "",
             return_type=str(method.return_type) if method.return_type else None,
             source_code=source_code,
             filename=filename,
