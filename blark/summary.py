@@ -551,6 +551,7 @@ class FunctionBlockSummary(Summary):
     source_code: str
     item: tf.FunctionBlock
     extends: Optional[str]
+    implements: Optional[list[str]]
     squashed: bool
     implementation: Optional[tf.StatementList] = None
     declarations: Dict[str, DeclarationSummary] = field(default_factory=dict)
@@ -591,6 +592,7 @@ class FunctionBlockSummary(Summary):
             source_code=source_code,
             filename=filename,
             extends=fb.extends.name if fb.extends else None,
+            implements=fb.implements.interfaces if fb.implements else None,
             squashed=False,
             **Summary.get_meta_kwargs(fb.meta),
         )
@@ -630,6 +632,7 @@ class FunctionBlockSummary(Summary):
             source_code="\n\n".join((extends_from.source_code, self.source_code)),
             item=self.item,
             extends=self.extends,
+            implements=self.implements,
             declarations=declarations,
             actions=actions,
             methods=methods,
